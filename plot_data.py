@@ -3,6 +3,7 @@ import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as plticker
+from sklearn import preprocessing
 
 drugs = ["Fentanyl", "Glucose", "Lidocaine", "Tylenol"]
 pores = [400, 500, 600, 700, 800, 900, 999] # in [μm]
@@ -35,8 +36,6 @@ tylenol_mw = 151.163
 lidocaine_mw = 234.34
 
 target_diffusion_counter = 0
-
-
 # Main Loop
 drug_txt_files = []
 for drug in drug_folders:
@@ -52,15 +51,25 @@ for drug in drug_folders:
         print("{:s}{:s}{:s}{:d} [μm]{:s}".format(lines, drug, lines, pores[pore_size_counter], lines))
         # Open txt file with Time and Flux data
         file = open(txt_file, 'r')
-        # Extract Time and Flux from txt file
+        # Extract Time and Flux from txt file - 40 Pores
         time = []
         flux = []
+        normalized_flux = []
         for line in file:
+            # print(line)
             time.append(float(line.split()[0]))
             flux.append(abs(float(line.split()[1])))
+        print(flux)
+        # normalized_flux = preprocessing.normalize(flux)
+        fig = plt.figure()
+        plt.plot(time, flux, label='40 pores')
+        # plt.plot(time, normalized_flux, label='normalized')
+        plt.grid()
+            
         # One Pore and Unit Conversions from [mol/m^3] to [mol/L]
         one_pore_fluxes = []
         for diffusion in range(len(flux)):
+
             one_pore_fluxes.append(flux[diffusion]*milli/40)
         # print(one_pore_fluxes)
         total_flux_1_pore = sum(one_pore_fluxes)
@@ -68,7 +77,7 @@ for drug in drug_folders:
         # Calculations
         diffusion_rates = []
         total_time = time[-1]   # [hr]
-        print(total_time)
+        # print(total_time)
         number_of_pores = [*range(1, 1001, 1)]
         for pore_qty in number_of_pores:
             # fluxes = []
@@ -80,3 +89,4 @@ for drug in drug_folders:
             # print("#P = {:d}, TarDiffRate = {:.4e}, CalcDiffRate = {:.4e}".format(pore_qty, target_diffusion[target_diffusion_counter], diffusion_rates[pore_qty-1]))
         pore_size_counter += 1
     target_diffusion_counter += 1
+    plt.close('all')
