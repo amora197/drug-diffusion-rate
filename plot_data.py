@@ -7,16 +7,17 @@ from sklearn import preprocessing
 
 drugs = ["Fentanyl", "Glucose", "Lidocaine", "Tylenol"]
 pores = [400, 500, 600, 700, 800, 900, 999] # in [μm]
+pores_inv = [999, 900, 800, 700, 600, 500, 400]
 
 # Magnitude Conversions
 milli = 1e-3
 micro = 1e-6
 
-# Wanted Diffusion Rates [g/L*hr]
-fentanyl_wanted_diff = 0.0108 * (micro/milli)
-tylenol_wanted_diff = 100.0 * (micro/milli)
-lidocaine_wanted_diff = 166.6 * (micro/milli)
-target_diffusion = [fentanyl_wanted_diff, lidocaine_wanted_diff, lidocaine_wanted_diff]
+# Wanted Diffusion Rates [μg/(mL*hr)]
+fentanyl_wanted_diff = 0.0108
+tylenol_wanted_diff = 100.0
+lidocaine_wanted_diff = 166.6
+target_diffusion = [fentanyl_wanted_diff, lidocaine_wanted_diff, tylenol_wanted_diff]
 
 # Directories needed
 pwd_path = os.path.dirname(os.path.realpath(__file__))
@@ -24,69 +25,63 @@ data_path = "/Comsol_Data/"
 image_path = "/Images/"
 drug_folders = os.listdir(pwd_path+data_path)
 
-# Correction of pore units
-poreSizes = []  # list of pores from [μm] to [m]
-for pore in pores:
-    poreSizes.append(pore*micro)
-
 # Molar masses  [g/mol]
 fentanyl_mw = 336.471   
-glucose_mw = 180.156   
+# glucose_mw = 180.156   
 tylenol_mw = 151.163
 lidocaine_mw = 234.34
+molar_masses = [fentanyl_mw, lidocaine_mw, tylenol_mw]
 
-target_diffusion_counter = 0
 # Main Loop
 drug_txt_files = []
+fentanyl_pore_qty = []
+lidocaine_pore_qty = []
+tylenol_pore_qty = []
+molar_masses_counter = 0
+target_diffusion_counter = 0
 for drug in drug_folders:
     if drug == "Glucose":
         continue
     # Navigate to the drug's data directory
     cwd_path = os.chdir(pwd_path+data_path+drug)
     drug_txt_files = os.listdir(cwd_path)
-    # Pores Counter
-    pore_size_counter = 0
+    # Plot Pore Size vs. # of Pores for Wanted Diffusion
+    drug_pore_numbers = []
     for txt_file in drug_txt_files:
-        lines = "-"*25
-        print("{:s}{:s}{:s}{:d} [μm]{:s}".format(lines, drug, lines, pores[pore_size_counter], lines))
-        # Open txt file with Time and Flux data
         file = open(txt_file, 'r')
-        # Extract Time and Flux from txt file - 40 Pores
         time = []
-        flux = []
-        normalized_flux = []
+        flux = []   # [mol/m^3]
         for line in file:
-            # print(line)
             time.append(float(line.split()[0]))
             flux.append(abs(float(line.split()[1])))
-        print(flux)
-        # normalized_flux = preprocessing.normalize(flux)
-        fig = plt.figure()
-        plt.plot(time, flux, label='40 pores')
-        # plt.plot(time, normalized_flux, label='normalized')
-        plt.grid()
-            
-        # One Pore and Unit Conversions from [mol/m^3] to [mol/L]
-        one_pore_fluxes = []
+        # One Pore Conversion and [μg/mL]
         for diffusion in range(len(flux)):
-
-            one_pore_fluxes.append(flux[diffusion]*milli/40)
-        # print(one_pore_fluxes)
-        total_flux_1_pore = sum(one_pore_fluxes)
-        # print(total_flux_1_pore)
-        # Calculations
-        diffusion_rates = []
-        total_time = time[-1]   # [hr]
-        # print(total_time)
-        number_of_pores = [*range(1, 1001, 1)]
-        for pore_qty in number_of_pores:
-            # fluxes = []
-            # for flux in one_pore_fluxes:
-            #     if pore_qty > len(one_pore_fluxes):
-            #         continue
-            #     fluxes.append(flux*(pore_qty))
-            diffusion_rates.append(total_flux_1_pore*pore_qty*target_diffusion[target_diffusion_counter])
-            # print("#P = {:d}, TarDiffRate = {:.4e}, CalcDiffRate = {:.4e}".format(pore_qty, target_diffusion[target_diffusion_counter], diffusion_rates[pore_qty-1]))
-        pore_size_counter += 1
-    target_diffusion_counter += 1
-    plt.close('all')
+            flux[diffusion] = flux[diffusion]*(milli/40)*(milli/micro)*molar_masses[molar_masses_counter]
+        # Calculate the # of Pores for wanted diffusion
+        pore_number_counter = 1
+        diff_rate = 0
+        while (diff_rate < target_diffusion[target_diffusion_counter]):
+            diff_rate = sum(flux)*pore_number_counter/time[-1]  # [μg/(mL*hr)]
+            pore_number_counter += 1
+        if drug == "Fentanyl":
+            fentanyl_pore_qty.append(pore_number_counter-1)
+        if drug == "Lidocaine":
+            lidocaine_pore_qty.append(pore_number_counter-1) 
+        if drug == "Tylenol":
+            tylenol_pore_qty.append(pore_number_counter-1)   
+    os.chdir(pwd_path+image_path+drug)
+    fig = plt.figure()
+    if drug == "Fentanyl":
+        plt.plot(pores_inv, fentanyl_pore_qty, 'o')
+    if drug == "Lidocaine":
+        plt.plot(pores_inv, lidocaine_pore_qty, 'o') 
+    if drug == "Tylenol":
+        plt.plot(pores_inv, tylenol_pore_qty, 'o')    
+    plt.title("{:s} - {:f} [μg/(mL*hr)]".format(drug, target_diffusion[target_diffusion_counter]))
+    plt.xlabel("Pore Diameter [μm]")
+    plt.ylabel("Number of Pores")
+    plt.grid()
+    plt.savefig("{:s}PoreSizeToNumber.png".format(drug))
+    plt.close()
+    molar_masses_counter += 1
+    target_diffusion_counter += 1 
