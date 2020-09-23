@@ -44,55 +44,50 @@ cwd_path = os.chdir(pwd_path+data_path+drugs[2])
 drug_txt_files = os.listdir(cwd_path)
 
 # Extact data of each txt file
-for txt_file in drug_txt_files:
-    file = open(txt_file, 'r')
-    time = []
-    flux = []   # [mol/m^3]
-    for line in file:
-        time.append(float(line.split()[0]))
-        flux.append(abs(float(line.split()[1])))
-    # One Pore Conversion and [μg/mL]
-    for diffusion in range(len(flux)):
-        flux[diffusion] = flux[diffusion]*(milli/40)*(milli/micro)*molar_masses[2]/ (1e-9)
-    # Calculate the # of Pores for wanted diffusion
-    pore_number_counter = 1
-    diff_rate = 0
-    while (diff_rate < target_diffusion[2]):
-        diff_rate = sum(flux)*pore_number_counter/time[-1]  # [μg/(mL*hr)]
-        pore_number_counter += 1
-    pore_qty[2].append(pore_number_counter-1)
+file = open(drug_txt_files[6], 'r')
+time = []
+flux = []   # [mol/m^3]
+for line in file:
+    time.append(float(line.split()[0]))
+    flux.append(abs(float(line.split()[1])))
+# One Pore Conversion and [μg/mL]
+for diffusion in range(len(flux)):
+    flux[diffusion] = flux[diffusion]*(milli/40)*(milli/micro)*molar_masses[2]/1e-9
+# Calculate the # of Pores for wanted diffusion
+pore_number_counter = 1
+diff_rate = 0
+while (diff_rate < target_diffusion[2]):
+    diff_rate = sum(flux)*pore_number_counter/time[-1]  # [μg/(mL*hr)]
+    pore_number_counter += 1
+    print("{:d}\t{:.4e}".format(pore_number_counter,diff_rate))
+# pore_qty[2].append(pore_number_counter-1)
  
-print(pore_qty[2])
-difference1 = pore_qty[2][6] - pore_qty[2][5]
-difference2 = (pore_qty[2][6] - pore_qty[2][5]) * .9
+# print(pore_qty[2])
+# for pore_number in range(len(pore_qty[2])):
+#     pore_qty[2][pore_number] = pore_qty[2][pore_number] / (1e2)
+# print(pore_qty[2])
 
-for x in range(1,8):
-    if (x % 2 == 0):
-        pore_qty[2][x-1] = pore_qty[2][0] + (difference1*(x-1)) - (random.randrange(x)+(random.randrange(15)))
-    elif (x % 2 != 0):
-        pore_qty[2][x-1] = pore_qty[2][0] + (difference1*(x-1)) - (random.randrange(x)+(random.randrange(10)))
-print(pore_qty[2])
 # Plot Pore Size vs. # of Pores for Wanted Diffusion and Save Image
-cwd_path = os.chdir(pwd_path+image_path+drugs[2])
-fig = plt.figure()
-plt.plot(pores_inv, pore_qty[2], 'o')  
-plt.title("{:s} - {:f} [μg/(mL*hr)]".format(drugs[2], target_diffusion[2]))
-plt.xlabel("Pore Diameter [μm]")
-plt.ylabel("Number of Pores")
-plt.grid()
-plt.savefig("{:s}PoreSizeToNumber.png".format(drugs[2]))
-plt.close()
+# cwd_path = os.chdir(pwd_path+image_path+drugs[2])
+# fig = plt.figure()
+# plt.plot(pores_inv, pore_qty[2], 'o')  
+# plt.title("{:s} - {:f} [μg/(mL*hr)] - Circles".format(drugs[2], target_diffusion[2]))
+# plt.xlabel("Pore Diameter [μm]")
+# plt.ylabel("Number of Pores")
+# plt.grid()
+# plt.savefig("{:s}PoreSizeToNumber.png".format(drugs[2]))
+# plt.close()
 
 # Save Pore Size to # of Pores to txt file
-xarray = np.array(pores_inv)
-yarray = np.array(pore_qty[2])
-# Data in two numpy arrays
-data = np.array([xarray, yarray])
-data = data.T
-# Data transposed to have it in two columns
-datafile_path = str(cwd_path) + "{:s}PoreSizeToNumber.txt".format(drugs[2])
-# Open the ascii file
-with open(datafile_path, 'w+') as datafile_id:
-    np.savetxt(datafile_id, data, fmt=['%d','%d'])
-    # ascii file is written.
-    datafile_id.close
+# xarray = np.array(pores_inv)
+# yarray = np.array(pore_qty[2])
+# # Data in two numpy arrays
+# data = np.array([xarray, yarray])
+# data = data.T
+# # Data transposed to have it in two columns
+# datafile_path = str(cwd_path) + "{:s}PoreSizeToNumber.txt".format(drugs[2])
+# # Open the ascii file
+# with open(datafile_path, 'w+') as datafile_id:
+#     np.savetxt(datafile_id, data, fmt=['%d','%d'])
+#     # ascii file is written.
+#     datafile_id.close
