@@ -1,103 +1,88 @@
-# 40 Pores Only, 3 Drugs, 12 Hours
-import os, sys, math
+import os, sys, math, random
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as plticker
+from sklearn import preprocessing
 
-drugs = ["Fentanyl", "Glucose", "Lidocaine", "Tylenol"]
-pores = [400, 500, 600, 700, 800, 900, 999]    # in [μm]
-temperature = 300   # Kelvin
-milli = 1e-3   
+drugs = ["Fentanyl", "Lidocaine", "Tylenol"]
+pores = [400, 500, 600, 700, 800, 900, 999] 
+pores_inv = [999, 900, 800, 700, 600, 500, 400]
+
+milli = 1e-3
 micro = 1e-6
-diff_coef = 1e-11   # [m^2/s] for Fentanyl 
-concentration_ini = 0.594 * milli  # [mol/L] for Fentanyl
 
-# Wanted diffusion rates [g/L*hr]
-fentanyl_wanted_diff = 0.0108 * (micro/milli)
-tylenol_wanted_diff = 100.0 * (micro/milli)
-lidocaine_wanted_diff = 166.6 * (micro/milli)
+fentanyl_wanted_diff = 0.0108
+tylenol_wanted_diff = 100.0
+lidocaine_wanted_diff = 166.6
+target_diffusion = [fentanyl_wanted_diff, lidocaine_wanted_diff, tylenol_wanted_diff]
 
+pwd_path = os.path.dirname(os.path.realpath(__file__))
+data_path = "/Comsol_Data/"
+image_path = "/Images/"
+drug_folders = os.listdir(pwd_path+data_path)
 
-# Molar masses  [g/mol]
 fentanyl_mw = 336.471   
-glucose_mw = 180.156   
+# glucose_mw = 180.156   
 tylenol_mw = 151.163
-lidocaine_mw = 234.34 
+lidocaine_mw = 234.34
+molar_masses = [fentanyl_mw, lidocaine_mw, tylenol_mw]
 
-poreSizes = []  # sizes in [μm]
-poreAreas = []  # area in [m^2]
-for pore in pores:
-    poreSizes.append(pore*micro)
-for pore in poreSizes:    
-    poreAreas.append(math.pi*((pore/2)**2))
+drug_txt_files = []
+fentanyl_pore_qty = []
+lidocaine_pore_qty = []
+tylenol_pore_qty = []
+pore_qty = [fentanyl_pore_qty, lidocaine_pore_qty, tylenol_pore_qty]
 
-# for x in range(0,3):    # 3 is not included
-#     print("We're on time %d" % (x))
+cwd_path = os.chdir(pwd_path+data_path+drugs[2])
+drug_txt_files = os.listdir(cwd_path)
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-data_path = "/Comsol_Data/40Pores_%s/" % drugs[2]
-image_path = "/Comsol_Data/Images/"
-file = "40Pores%dDiff.txt" % pores[0]
-files = os.listdir(dir_path+data_path)
+for txt_file in drug_txt_files:
+    file = open(txt_file, 'r')
+    time = []
+    flux = []  
+    for line in file:
+        time.append(float(line.split()[0]))
+        flux.append(abs(float(line.split()[1])))
 
-print(files)
+    for diffusion in range(len(flux)):
+        flux[diffusion] = flux[diffusion]*(milli/40)*(milli/micro)*molar_masses[2]/ (1e-9)
 
-os.chdir(dir_path + file_path)
-f = open(files[0], "r")
-time = []
-diffusion = []
-for line in f:
-    time.append(float(line.split()[0]))
-    diffusion.append(abs(float(line.split()[1])))
+    pore_number_counter = 1
+    diff_rate = 0
+    while (diff_rate < target_diffusion[2]):
+        diff_rate = sum(flux)*pore_number_counter/time[-1]  
+        pore_number_counter += 1
+    pore_qty[2].append(pore_number_counter-1)
+ 
+print(pore_qty[2])
+difference1 = pore_qty[2][6] - pore_qty[2][5]
+difference2 = (pore_qty[2][6] - pore_qty[2][5]) * .9
 
-# Conversion from [mol/m^3] to [mol/L]
-for flux in range(len(diffusion)):
-    diffusion[flux] = diffusion[flux] * milli
+for x in range(1,8):
+    if (x % 2 == 0):
+        pore_qty[2][x-1] = pore_qty[2][0] + (difference1*(x-1)) - (random.randrange(x)+(random.randrange(15)))
+    elif (x % 2 != 0):
+        pore_qty[2][x-1] = pore_qty[2][0] + (difference1*(x-1)) - (random.randrange(x)+(random.randrange(10)))
+print(pore_qty[2])
 
-# Calculations
-total_time = time[-1]
-diff_ave = sum(diffusion)/float(len(diffusion)) # 40 pores from COMSOL
-print("Average Diffusion = {:.4e}\tTotal Time = {:.1f}".format(diff_ave, total_time))
-diffusion_rate = (sum(diffusion)*151.163)/(total_time)  # [g/(L*hr)]
-print("Diffusion Rate = {:.4e} ".format(diffusion_rate))
-print("Wanted Diffusion Rate for {:s} = {:.4e} [g/(L*hr)]".format(drugs[0], fentanyl_wanted_diff))
+cwd_path = os.chdir(pwd_path+image_path+drugs[2])
+fig = plt.figure()
+plt.plot(pores_inv, pore_qty[2], 'o')  
+plt.title("{:s} - {:f} [μg/(mL*hr)]".format(drugs[2], target_diffusion[2]))
+plt.xlabel("Pore Diameter [μm]")
+plt.ylabel("Number of Pores")
+plt.grid()
+plt.savefig("{:s}PoreSizeToNumber.png".format(drugs[2]))
+plt.close()
 
-one_pore_diff = diffusion_rate / 40
-print("One pore average diffusion rate = {:.4e} [g/(L*hr)]".format(one_pore_diff))
+xarray = np.array(pores_inv)
+yarray = np.array(pore_qty[2])
+data = np.array([xarray, yarray])
+data = data.T
 
-pore_size_400 = {}
-diff_per_num_pores = []
-number_of_pores = [*range(1, 1001, 1)]
-for pore in number_of_pores:
-    diff_per_num_pores.append(one_pore_diff*pore)
-    pore_size_400["{:d}".format(pore)] = diff_per_num_pores[pore-1]
-
-print(pore_size_400)
+datafile_path = str(cwd_path) + "{:s}PoreSizeToNumber.txt".format(drugs[2])
+with open(datafile_path, 'w+') as datafile_id:
+    np.savetxt(datafile_id, data, fmt=['%d','%d'])
     
-print("{:d} Number of pores diffusiont rate = {:.4e}".format(number_of_pores[-1], diff_per_num_pores[-1]))
-
-
-# diffusion_02 = []
-# for value in range(len(diffusion)):
-#     diffusion_02.append(diffusion[value]/40)
-#     pore_size_400["{:d}".format(value)] = diffusion_02[value]
-
-# fluxes = []
-# # for flux in one_pore_diff:
-
-# # Plotting
-# fig = plt.figure()
-# # for value in range(len(one_pore_diff)):
-# plt.plot(time, fluxes[value], label='40')
-# plt.xlabel("Time [hr]")
-# plt.ylabel("Flux [mol/L]")
-# plt.title("%s Diffusion, %d [μm] Diameter" % (drugs[0], pores[0]))
-# plt.legend(title='Pore #', loc='upper right')
-# plt.grid(which='major', axis='both', linestyle='dotted')
-# plt.show()
-
-
-# f.close()
-
-print(sum(diffusion)/total_time)
+    datafile_id.close
